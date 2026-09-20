@@ -4,6 +4,7 @@ const Order = require("../models/Order");
 const OrderItem = require("../models/OrderItem");
 const Product = require("../models/Product");
 const Cart = require("../models/Cart");
+const decrementStock = require("../utils/stockHelper");
 
 // Order place from cart
 router.post("/order/cart", async (req, res) => {
@@ -20,17 +21,17 @@ router.post("/order/cart", async (req, res) => {
 
     let totalAmount = 0;
 
-for (const item of cartItems) {
-    const product = await Product.findById(item.productId);
+    for (const item of cartItems) {
+      const product = await Product.findById(item.productId);
 
-    if (!product) {
+      if (!product) {
         return res.status(404).json({
-            msg: "Product not found"
+          msg: "Product not found",
         });
-    }
+      }
 
-    totalAmount += Number(product.actualPrice) * Number(item.quantity);
-}
+      totalAmount += Number(product.actualPrice) * Number(item.quantity);
+    }
 
     const lastOrder = await Order.findOne().sort({ createdAt: -1 });
 
@@ -57,6 +58,16 @@ for (const item of cartItems) {
       });
 
       await orderItem.save();
+    }
+
+    for (const item of cartItems) {
+      const orderItem = new OrderItem({
+        orderId: newOrder._id,
+        productId: item.productId,
+        quantity: String(item.quantity),
+      });
+      await orderItem.save();
+      await decrementStock(item.productId, item.quantity);
     }
 
     await Cart.deleteMany({ userId });

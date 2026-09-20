@@ -225,15 +225,11 @@ const Address = () => {
         },
       );
 
-      if (res.data.msg === "Order placed successfully") {
-        alert("Order placed successfully");
-        navigate("/user/dashboard");
-      } else {
-        setAlert({
-          type: "error",
-          msg: res.data.msg,
-        });
-      }
+      setAlert({
+        type: "success",
+        msg: res.data.msg || "Order placed successfully!",
+      });
+      navigate("/user/dashboard/orders");
     } catch (error) {
       console.log("Status:", error.response?.status);
       console.log("Backend error:", error.response?.data);
@@ -280,12 +276,7 @@ const Address = () => {
         </button>
       </div>
 
-      {alert && (
-        <div className={`dash-alert ${alert.type}`}>
-          {alert.type === "success" ? "✅" : "❌"} {alert.msg}
-        </div>
-      )}
-
+      {alert && <div className={`dash-alert ${alert.type}`}>{alert.msg}</div>}
       <div className="row g-4">
         {/* ── Left ── */}
         <div className="col-lg-7">
