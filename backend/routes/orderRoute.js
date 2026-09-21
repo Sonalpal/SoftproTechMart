@@ -85,6 +85,33 @@ router.post("/order/cart", async (req, res) => {
   }
 });
 
+// Total revenue from successfully delivered orders
+router.get("/revenue", async (req, res) => {
+  try {
+    const result = await Order.aggregate([
+      { $match: { orderStatus: "delivered" } },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$totalAmount" },
+          deliveredOrders: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const totalRevenue = result[0]?.totalRevenue || 0;
+    const deliveredOrders = result[0]?.deliveredOrders || 0;
+
+    res.json({
+      msg: "Revenue calculated successfully",
+      data: { totalRevenue, deliveredOrders },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Failed to calculate revenue" });
+  }
+});
+
 // Order history for a user
 router.get("/order/history/:id", async (req, res) => {
   try {
