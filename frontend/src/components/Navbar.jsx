@@ -70,7 +70,7 @@ const Navbar = () => {
           <div className="brand-logo">
             <img src={logo} alt="" />
           </div>
-          <div className="brand-name">Softpro<span>Innovation</span></div>
+          <div className="brand-name">Softpro<span>TechMart</span></div>
         </Link>
 
         {/* Mobile: theme + hamburger */}
@@ -110,7 +110,7 @@ const Navbar = () => {
             {/* Agar logged in hai */}
             {isLoggedIn ? (
               <Link to="/user/dashboard" className="nav-btn-fill">
-                👤 Dashboard
+                 Dashboard
               </Link>
             ) : (
               <>

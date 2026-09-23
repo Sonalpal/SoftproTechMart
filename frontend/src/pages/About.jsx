@@ -184,7 +184,7 @@ const About = () => {
         <div className="container text-center fade-up">
           <span className="section-eyebrow">Ready to Build?</span>
           <h2 className="section-title" style={{ marginBottom: '1.5rem' }}>
-            Start your next project with <em>SoftproInnovation</em>
+            Start your next project with <em>SoftproTechMart</em>
           </h2>
           <div className="d-flex justify-content-center gap-3 flex-wrap">
             <Link to="/products" className="btn-hero-primary" style={{ borderRadius: 'var(--radius-md)', textDecoration: 'none' }}>

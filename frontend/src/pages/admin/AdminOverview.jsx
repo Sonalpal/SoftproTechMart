@@ -9,14 +9,15 @@ const AdminOverview = () => {
     orders: 0,
     users: 0,
     complaints: 0,
+    revenue: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [prodRes, catRes, orderRes, userRes, compRes] = await Promise.all(
-          [
+        const [prodRes, catRes, orderRes, userRes, compRes, revRes] =
+          await Promise.all([
             axios.get("http://localhost:5000/api/product"),
             axios.get("http://localhost:5000/api/category"),
             axios.get("http://localhost:5000/api/order/orders"),
@@ -25,10 +26,9 @@ const AdminOverview = () => {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
               },
             }),
-            
             axios.get("http://localhost:5000/api/complaint"),
-          ],
-        );
+            axios.get("http://localhost:5000/api/order/revenue"),
+          ]);
 
         setStats({
           products: prodRes.data.data?.length || 0,
@@ -36,6 +36,7 @@ const AdminOverview = () => {
           orders: orderRes.data.data?.length || 0,
           users: userRes.data.data?.length || 0,
           complaints: compRes.data.data?.length || 0,
+          revenue: revRes.data.data?.totalRevenue || 0,
         });
       } catch (err) {
         console.error("Error fetching admin dashboard statistics:", err);
@@ -70,7 +71,7 @@ const AdminOverview = () => {
             Admin <span>Overview</span>
           </h1>
           <p className="dash-page-subtitle">
-            Real-time statistics and summary of Softpro Innovation
+            Real-time statistics and summary of Softpro TechMart
           </p>
         </div>
       </div>
@@ -105,6 +106,13 @@ const AdminOverview = () => {
             cls: "s4",
             icon: "👥",
             link: "/admin/dashboard/users",
+          },
+          {
+            label: "Total Revenue",
+            num: `₹${stats.revenue.toLocaleString("en-IN")}`,
+            cls: "s1",
+            icon: "💰",
+            link: "/admin/dashboard/orders",
           },
         ].map((s) => (
           <div className="col-12 col-sm-6 col-lg-3" key={s.label}>
@@ -183,32 +191,6 @@ const AdminOverview = () => {
                     }}
                   >
                     HTTP security headers are verified active and secure.
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className="dash-alert info"
-                style={{ marginBottom: "0.8rem" }}
-              >
-                <span>💬</span>
-                <div>
-                  <strong>Customer Complaints Received</strong>
-                  <div
-                    style={{
-                      fontSize: "0.78rem",
-                      marginTop: "2px",
-                      opacity: 0.8,
-                    }}
-                  >
-                    There are currently {stats.complaints} total customer
-                    message inquiries.{" "}
-                    <Link
-                      to="/admin/dashboard/complaint"
-                      style={{ color: "inherit", fontWeight: 600 }}
-                    >
-                      Review messages →
-                    </Link>
                   </div>
                 </div>
               </div>

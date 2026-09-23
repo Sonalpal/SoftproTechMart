@@ -9,7 +9,7 @@ const Footer = () => {
 
           {/* Brand col */}
           <div className="col-lg-3 col-md-6">
-            <div className="footer-brand-name">Softpro<span>Innovation</span></div>
+            <div className="footer-brand-name">Softpro<span>TechMart</span></div>
             <p className="footer-tagline">
               Your trusted source for microcontrollers, single-board computers,
               and electronics components in India.

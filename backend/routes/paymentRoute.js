@@ -123,15 +123,7 @@ router.post("/verify", async (req, res) => {
     await newOrder.save();
 
     // Create Order Items
-    for (const item of cartItems) {
-      const orderItem = new OrderItem({
-        orderId: newOrder._id,
-        productId: item.productId._id,
-        quantity: item.quantity,
-      });
-
-      await orderItem.save();
-    }
+  
 
     for (const item of cartItems) {
       const orderItem = new OrderItem({

@@ -84,7 +84,7 @@ const Adminlogin = () => {
             <div className="auth-logo-mark" style={{ background: 'var(--accent, #e05c2a)' }}>
               <img src={logo} alt="sofptorinnovation" />
             </div>
-            <div className="auth-brand">Softpro<span>Innovation</span></div>
+            <div className="auth-brand">Softpro<span>TechMart</span></div>
           </div>
 
           {/* Card */}
