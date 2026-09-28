@@ -4,6 +4,43 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const verifyToken = require("../middleware/verifyToken");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
+const nodemailer = require("nodemailer");
+const EmailVerification = require("../models/EmailVerification");
+const rateLimit = require("express-rate-limit");
+
+const OTP_TTL_MS = 10 * 60 * 1000;
+const OTP_MAX_ATTEMPTS = 5;
+const sendOtpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, msg: "Too many code requests. Please try again in 15 minutes." },
+});
+const verifyOtpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, msg: "Too many verification attempts. Please try again in 15 minutes." },
+});
+const normalizeEmail = (email) => email.toLowerCase().trim();
+const otpDigest = (email, otp) =>
+  crypto
+    .createHmac("sha256", process.env.JWT_SECRET)
+    .update(`${email}:${otp}`)
+    .digest("hex");
+
+const createMailTransport = () => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error("Email delivery is not configured on the server");
+  }
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+  });
+};
 
 // Input validation helper
 const validateEmail = (email) => {
@@ -15,6 +52,84 @@ const validateMobile = (mobile) => {
   const mobileRegex = /^[6-9]\d{9}$/;
   return mobileRegex.test(mobile);
 };
+
+// Send a short-lived verification code before registration.
+router.post("/send-otp", sendOtpLimiter, async (req, res) => {
+  try {
+    const email = typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
+    if (!validateEmail(email)) {
+      return res.status(400).json({ success: false, msg: "Please provide a valid email" });
+    }
+    if (await User.exists({ email })) {
+      return res.status(409).json({ success: false, msg: "An account with this email already exists" });
+    }
+
+    const otp = crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+    await EmailVerification.findOneAndUpdate(
+      { email },
+      { email, otpHash: otpDigest(email, otp), attempts: 0, expiresAt, verifiedAt: null },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+
+    try {
+      await createMailTransport().sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Your Softpro Innovation verification code",
+        text: `Your verification code is ${otp}. It expires in 10 minutes. If you did not request this, you can ignore this email.`,
+        html: `<p>Your Softpro Innovation verification code is:</p><p style="font-size:24px;font-weight:bold;letter-spacing:6px">${otp}</p><p>It expires in 10 minutes.</p>`,
+      });
+    } catch (mailError) {
+      await EmailVerification.deleteOne({ email });
+      throw mailError;
+    }
+
+    return res.status(200).json({ success: true, msg: "Verification code sent. Check your email." });
+  } catch (error) {
+    console.error("Send verification email error:", error.message);
+    return res.status(500).json({ success: false, msg: "Could not send the verification email. Check the server email settings and try again." });
+  }
+});
+
+// Verify code, allowing at most five guesses for each issued code.
+router.post("/verify-otp", verifyOtpLimiter, async (req, res) => {
+  try {
+    const email = typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
+    const otp = typeof req.body.otp === "string" ? req.body.otp.trim() : "";
+    if (!validateEmail(email) || !/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ success: false, msg: "Enter a valid email and 6-digit code" });
+    }
+
+    const record = await EmailVerification.findOne({ email, expiresAt: { $gt: new Date() } });
+    if (!record) {
+      return res.status(400).json({ success: false, msg: "The code has expired or was not requested. Send a new code." });
+    }
+    if (record.verifiedAt) {
+      return res.status(200).json({ success: true, msg: "Email verified. You can create your account." });
+    }
+    if (record.attempts >= OTP_MAX_ATTEMPTS) {
+      await EmailVerification.deleteOne({ _id: record._id });
+      return res.status(429).json({ success: false, msg: "Too many incorrect attempts. Request a new code." });
+    }
+
+    const submittedHash = Buffer.from(otpDigest(email, otp), "hex");
+    const savedHash = Buffer.from(record.otpHash, "hex");
+    if (submittedHash.length !== savedHash.length || !crypto.timingSafeEqual(submittedHash, savedHash)) {
+      record.attempts += 1;
+      if (record.attempts >= OTP_MAX_ATTEMPTS) await record.deleteOne();
+      else await record.save();
+      return res.status(400).json({ success: false, msg: "Incorrect verification code" });
+    }
+
+    record.verifiedAt = new Date();
+    await record.save();
+    return res.status(200).json({ success: true, msg: "Email verified. You can create your account." });
+  } catch (error) {
+    console.error("Verify email code error:", error.message);
+    return res.status(500).json({ success: false, msg: "Could not verify the code. Please try again." });
+  }
+});
 
 // user registration
 router.post("/register", async (req, res) => {
@@ -50,8 +165,10 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedMobile = mobile.trim();
     const isExist = await User.findOne({
-      $or: [{ email: email }, { mobile: mobile }],
+      $or: [{ email: normalizedEmail }, { mobile: normalizedMobile }],
     });
 
     if (isExist) {
@@ -60,16 +177,27 @@ router.post("/register", async (req, res) => {
         msg: "User with this email or mobile already exists",
       });
     }
+
+    const verifiedEmail = await EmailVerification.findOne({
+      email: normalizedEmail,
+      verifiedAt: { $ne: null },
+      expiresAt: { $gt: new Date() },
+    });
+    if (!verifiedEmail) {
+      return res.status(403).json({ success: false, msg: "Verify your email before creating an account" });
+    }
+
     const hash = await bcrypt.hash(password, 10);
 
     const user = new User({
       name: name.trim(),
-      email: email.toLowerCase().trim(),
-      mobile: mobile.trim(),
+      email: normalizedEmail,
+      mobile: normalizedMobile,
       password: hash,
     });
 
     await user.save();
+    await EmailVerification.deleteOne({ _id: verifiedEmail._id });
 
     return res.status(201).json({
       success: true,

@@ -85,44 +85,90 @@ const IconEyeOff = () => (
 );
 
 const Register = () => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    mobile: "",
-    password: "",
-  });
-  const [showPwd, setShowPwd] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const navigate = useNavigate()
+  const [formData, setFormData] = useState({ name: '', email: '', mobile: '', password: '' })
+  const [showPwd,  setShowPwd]  = useState(false)
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+  const [otp, setOtp] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpVerified, setOtpVerified] = useState(false)
+  const [otpLoading, setOtpLoading] = useState(false)
+  const [notice, setNotice] = useState('')
 
   const handleChange = (e) => {
-    setError("");
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-      [e.target.email]: e.target.email,
-      [e.target.mobile]: e.target.mobile,
-      [e.target.password]: e.target.password,
-    }));
-  };
+    setError('')
+    setNotice('')
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+    if (name === 'email') {
+      setOtp('')
+      setOtpSent(false)
+      setOtpVerified(false)
+    }
+  }
+
+  const handleSendOtp = async () => {
+    setError('')
+    setNotice('')
+    if (!formData.email.trim()) {
+      setError('Enter your email address first.')
+      return
+    }
+    setOtpLoading(true)
+    try {
+      const { data } = await axios.post('http://localhost:5000/api/user/send-otp', {
+        email: formData.email,
+      })
+      setOtpSent(true)
+      setOtpVerified(false)
+      setOtp('')
+      setNotice(data.msg || 'Verification code sent. Check your email.')
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Could not send the code. Please try again.')
+    } finally {
+      setOtpLoading(false)
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    setError('')
+    setNotice('')
+    if (!/^\d{6}$/.test(otp)) {
+      setError('Enter the 6-digit verification code.')
+      return
+    }
+    setOtpLoading(true)
+    try {
+      const { data } = await axios.post('http://localhost:5000/api/user/verify-otp', {
+        email: formData.email,
+        otp,
+      })
+      setOtpVerified(true)
+      setNotice(data.msg || 'Email verified.')
+    } catch (err) {
+      setError(err.response?.data?.msg || 'Could not verify the code. Please try again.')
+    } finally {
+      setOtpLoading(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    setNotice('')
+    if (!otpVerified) {
+      setError('Verify your email before creating your account.')
+      setLoading(false)
+      return
+    }
     try {
-      console.log("fine till now");
-
-      await axios.post("http://localhost:5000/api/user/register", formData);
-      console.log("here is the prblem");
-
-      alert("Account created successfully! Please sign in.");
-      navigate("/login");
+      await axios.post('http://localhost:5000/api/user/register', formData)
+      alert('Account created successfully! Please sign in.')
+      navigate('/login')
     } catch (err) {
-      console.log(err);
-
-      setError("Registration failed. Please check your details and try again.");
+      setError(err.response?.data?.msg || 'Registration failed. Please check your details and try again.')
     } finally {
       setLoading(false);
     }
@@ -164,6 +210,7 @@ const Register = () => {
               {error}
             </div>
           )}
+          {notice && <div className="auth-success-alert" role="status">{notice}</div>}
 
           <form onSubmit={handleSubmit} noValidate>
             <div className="form-row-2">
@@ -209,6 +256,7 @@ const Register = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
+                disabled={otpVerified}
                 placeholder="you@example.com"
                 required
                 autoComplete="email"
@@ -217,6 +265,40 @@ const Register = () => {
                 <IconMail />
               </span>
             </div>
+
+            {!otpVerified && (
+              <div className="otp-actions">
+                {!otpSent ? (
+                  <button type="button" className="btn-auth" onClick={handleSendOtp} disabled={otpLoading || !formData.email.trim()}>
+                    {otpLoading ? 'Sending code…' : 'Send verification code'}
+                  </button>
+                ) : (
+                  <>
+                    <div className="form-field otp-field">
+                      <label htmlFor="otp">Email verification code</label>
+                      <input
+                        id="otp"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="6-digit code"
+                        aria-label="6-digit email verification code"
+                      />
+                    </div>
+                    <button type="button" className="btn-auth" onClick={handleVerifyOtp} disabled={otpLoading || otp.length !== 6}>
+                      {otpLoading ? 'Checking code…' : 'Verify email'}
+                    </button>
+                    <button type="button" className="otp-resend" onClick={handleSendOtp} disabled={otpLoading}>
+                      Send a new code
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+            {otpVerified && <div className="auth-success-alert" role="status">Email address verified</div>}
 
             <div className="form-field">
               <label htmlFor="password">Create Password</label>
@@ -246,8 +328,8 @@ const Register = () => {
               </label>
             </div>
 
-            <button type="submit" className="btn-auth" disabled={loading}>
-              {loading ? "Creating account…" : "Create Account"}
+            <button type="submit" className="btn-auth" disabled={loading || !otpVerified}>
+              {loading ? 'Creating account…' : 'Create Account'}
             </button>
           </form>
 
@@ -262,4 +344,4 @@ const Register = () => {
   );
 };
 
-export default Register;
+export default Register
