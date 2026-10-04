@@ -53,11 +53,11 @@ const isPasswordMatch = await user.matchPassword(password);  // Secure!
 ```
 
 ### 3. **Missing Input Validation** ❌ → ✅
-**Issue:** No validation on user inputs (email, mobile, password format)
+**Issue:** No validation on user inputs (email, password format)
 - **File:** `server/routes/userRoute.js`
 - **Fixes:**
   - Email format validation using regex
-  - Mobile number validation (Indian format: 10 digits starting with 6-9)
+  
   - Password strength requirements (minimum 8 characters)
   - Password confirmation matching
 
@@ -68,10 +68,7 @@ const validateEmail = (email) => {
     return emailRegex.test(email);
 };
 
-const validateMobile = (mobile) => {
-    const mobileRegex = /^[6-9]\d{9}$/;
-    return mobileRegex.test(mobile);
-};
+
 ```
 
 ### 4. **Weak Token Verification** ❌ → ✅
@@ -145,14 +142,14 @@ requiredEnvVars.forEach(varName => {
 - **Fix:** Added proper try-catch blocks and HTTP status codes
 - **Status:** Updated userRoute.js as example
 
-### 3. **Duplicate Mobile/Email Handling**
+### 3. **Duplicate Email Handling**
 - **File:** `server/routes/userRoute.js`
 - **Before:** Only checked email for duplicates
 - **After:** Check both email and mobile for uniqueness
 
 ```javascript
 const isExist = await User.findOne({ 
-    $or: [{ email: email }, { mobile: mobile }] 
+    $or: [{ email: email }] 
 });
 ```
 

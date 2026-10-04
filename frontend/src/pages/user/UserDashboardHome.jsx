@@ -127,7 +127,7 @@ const UserDashboardHome = () => {
               {/* Details */}
               {[
                 { icon: '📧', label: 'Email',  val: user?.email  || '—' },
-                { icon: '📱', label: 'Mobile', val: user?.mobile || '—' },
+               
               ].map(row => (
                 <div key={row.label} style={{
                   display: 'flex', alignItems: 'flex-start', gap: '0.75rem',

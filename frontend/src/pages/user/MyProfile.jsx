@@ -28,7 +28,7 @@ const Profile = () => {
         setForm({
           name: data.name || "",
           email: data.email || "",
-          mobile: data.mobile || "",
+         
         });
       } catch (err) {
         console.error(err);
@@ -52,8 +52,7 @@ const Profile = () => {
       return setAlert({ type: "error", msg: "Name is required." });
     if (!form.email.trim())
       return setAlert({ type: "error", msg: "Email is required." });
-    if (!form.mobile.trim())
-      return setAlert({ type: "error", msg: "Mobile is required." });
+   
 
     setSaving(true);
     try {
@@ -62,7 +61,7 @@ const Profile = () => {
         {
           name: form.name,
           email: form.email,
-          mobile: form.mobile,
+        
         },
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -188,7 +187,7 @@ const Profile = () => {
               <div style={{ marginTop: "1.5rem", textAlign: "left" }}>
                 {[
                   { icon: "📧", label: "Email", val: form.email },
-                  { icon: "📱", label: "Mobile", val: form.mobile },
+                 
                 ].map((row) => (
                   <div
                     key={row.label}
@@ -281,16 +280,7 @@ const Profile = () => {
                   />
                 </div>
 
-                <div className="dash-field">
-                  <label>Mobile Number</label>
-                  <input
-                    type="tel"
-                    name="mobile"
-                    value={form.mobile}
-                    onChange={handleChange}
-                    placeholder="Enter your mobile number"
-                  />
-                </div>
+              
 
                 <div
                   style={{
@@ -315,7 +305,7 @@ const Profile = () => {
                         setForm({
                           name: user.name || "",
                           email: user.email || "",
-                          mobile: user.mobile || "",
+                       
                         });
                         setEdited(false);
                         setAlert(null);

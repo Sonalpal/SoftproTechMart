@@ -53,10 +53,8 @@ const Users = () => {
         .includes(search.toLowerCase()) ||
       String(u.email || "")
         .toLowerCase()
-        .includes(search.toLowerCase()) ||
-      String(u.mobile || "")
-        .toLowerCase()
-        .includes(search.toLowerCase()),
+        .includes(search.toLowerCase())
+      
   );
 
   if (loading) {
@@ -167,7 +165,7 @@ const Users = () => {
                   <th>S.N.</th>
                   <th>Customer</th>
                   <th>Email</th>
-                  <th>Mobile</th>
+                 
                   <th>Registration Date</th>
                   <th>Actions</th>
                 </tr>

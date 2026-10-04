@@ -48,10 +48,7 @@ const validateEmail = (email) => {
   return emailRegex.test(email);
 };
 
-const validateMobile = (mobile) => {
-  const mobileRegex = /^[6-9]\d{9}$/;
-  return mobileRegex.test(mobile);
-};
+
 
 // Send a short-lived verification code before registration.
 router.post("/send-otp", sendOtpLimiter, async (req, res) => {
@@ -134,10 +131,10 @@ router.post("/verify-otp", verifyOtpLimiter, async (req, res) => {
 // user registration
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, mobile, password } = req.body;
+    const { name, email,  password } = req.body;
 
     // Input validation
-    if (!name || !email || !mobile || !password) {
+    if (!name || !email ||  !password) {
       return res.status(400).json({
         success: false,
         msg: "Please provide all required fields",
@@ -151,12 +148,7 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    if (!validateMobile(mobile)) {
-      return res.status(400).json({
-        success: false,
-        msg: "Please provide a valid mobile number",
-      });
-    }
+    
 
     if (password.length < 8) {
       return res.status(400).json({
@@ -166,15 +158,15 @@ router.post("/register", async (req, res) => {
     }
 
     const normalizedEmail = normalizeEmail(email);
-    const normalizedMobile = mobile.trim();
+    
     const isExist = await User.findOne({
-      $or: [{ email: normalizedEmail }, { mobile: normalizedMobile }],
+      $or: [{ email: normalizedEmail }],
     });
 
     if (isExist) {
       return res.status(400).json({
         success: false,
-        msg: "User with this email or mobile already exists",
+        msg: "User with this email  already exists",
       });
     }
 
@@ -192,7 +184,7 @@ router.post("/register", async (req, res) => {
     const user = new User({
       name: name.trim(),
       email: normalizedEmail,
-      mobile: normalizedMobile,
+   
       password: hash,
     });
 
@@ -312,10 +304,10 @@ router.get("/:id", verifyToken, async (req, res) => {
 // update user details
 router.patch("/:id", verifyToken, async (req, res) => {
   try {
-    const { name, mobile } = req.body;
+    const { name} = req.body;
 
     // Only allow updating specific fields
-    const allowedFields = { name, mobile };
+    const allowedFields = { name };
     Object.keys(allowedFields).forEach(
       (key) => allowedFields[key] === undefined && delete allowedFields[key],
     );
@@ -334,12 +326,7 @@ router.patch("/:id", verifyToken, async (req, res) => {
       });
     }
 
-    if (mobile && !validateMobile(mobile)) {
-      return res.status(400).json({
-        success: false,
-        msg: "Please provide a valid mobile number",
-      });
-    }
+   
 
     const data = await User.findByIdAndUpdate(req.params.id, allowedFields, {
       new: true,

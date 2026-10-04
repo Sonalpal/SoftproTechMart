@@ -6,9 +6,9 @@ const bcrypt = require("bcryptjs");
 
 router.post("/register", async (req, res) => {
   try {
-    const { email, mobile, name, password } = req.body;
+    const { email, name, password } = req.body;
 
-    if (!email || !mobile || !name || !password) {
+    if (!email || !name || !password) {
       return res
         .status(400)
         .json({ success: false, msg: "Please provide all required fields" });
@@ -29,7 +29,7 @@ router.post("/register", async (req, res) => {
     const user = await Admin.create({
       name,
       email,
-      mobile,
+    
       password: hash,
     });
 
