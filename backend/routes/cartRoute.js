@@ -1,7 +1,17 @@
 const express = require("express");
 const router = express.Router();
 const Cart = require("../models/Cart");
+const verifyToken = require("../middleware/verifyToken");
 
+   router.get("/:id", verifyToken, async (req, res) => {
+     try {
+       const data = await Cart.find({ userId: req.user.id }).populate("productId");
+       res.json({ msg: "Cart fetched", data });
+     } catch (err) {
+       console.error(err);
+       res.status(500).json({ msg: "Failed to fetch cart items" });
+     }
+   });
 // Add to cart
 router.post("/", async (req, res) => {
   const { userId, productId } = req.body;
@@ -38,7 +48,7 @@ router.patch("/quantity/increase/:id", async (req, res) => {
     //   const quant = await Cart.find(req.params.id);
     const quant = await Cart.findById(req.params.id);
 
-    if (quant.quantity <= 5) {
+    if (Number(quant.quantity) < 5) {
       let c = parseInt(quant.quantity) + 1;
       const a = await Cart.findByIdAndUpdate(
         req.params.id,

@@ -5,30 +5,31 @@ const Cart = require("../models/Cart");
 const crypto = require("crypto");
 const Order = require("../models/Order");
 const OrderItem = require("../models/OrderItem");
+const Address = require("../models/Address");
 const decrementStock = require("../utils/stockHelper");
+const calculateTotal = require("../utils/pricing");
+const generateOrderId = require("../utils/orderId");
+const verifyToken = require("../middleware/verifyToken");
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-router.post("/create-order", async (req, res) => {
+router.post("/create-order", verifyToken, async (req, res) => {
   try {
-    const { userId } = req.body;
+    // The user comes from the login token, never from the request body
+    const userId = req.user.id;
 
-    // Re-fetch cart from DB
-    const cartItems = await Cart.find({ userId }).populate("productId");
+    // Re-fetch cart from DB (skip items whose product was deleted)
+    const cartItems = (
+      await Cart.find({ userId }).populate("productId")
+    ).filter((item) => item.productId);
 
-    let subtotal = 0;
+    if (!cartItems.length) {
+      return res.status(400).json({ success: false, message: "Cart is empty" });
+    }
 
-    cartItems.forEach((item) => {
-      const price = Number(item.productId.actualPrice) || 0;
-      const discount = Number(item.productId.discount) || 0;
-      const discountedPrice = Math.round(price - (price * discount) / 100);
-      subtotal += discountedPrice * item.quantity;
-    });
-
-    const shipping = subtotal > 5000 ? 0 : 99;
-    const total = subtotal + shipping;
+    const { total } = calculateTotal(cartItems);
 
     const order = await razorpay.orders.create({
       amount: total * 100,
@@ -48,13 +49,16 @@ router.post("/create-order", async (req, res) => {
     });
   }
 });
-router.post("/verify", async (req, res) => {
+
+router.post("/verify", verifyToken, async (req, res) => {
   try {
+    // The user comes from the login token, never from the request body
+    const userId = req.user.id;
+
     const {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      userId,
       addressId,
     } = req.body;
 
@@ -73,47 +77,51 @@ router.post("/verify", async (req, res) => {
       });
     }
 
-    // Get Cart Items
-    const cartItems = await Cart.find({
-      userId,
-    }).populate("productId");
-
-    if (!cartItems.length) {
-      return res.status(400).json({
-        success: false,
-        msg: "Cart is empty",
+    // If this payment already created an order, don't create another one
+    const existingOrder = await Order.findOne({
+      transactionId: razorpay_payment_id,
+    });
+    if (existingOrder) {
+      return res.json({
+        success: true,
+        msg: "Order already created for this payment",
       });
     }
 
-    // Generate Order Number
-    const lastOrder = await Order.findOne().sort({ createdAt: -1 });
-
-    const oid = String(parseInt(lastOrder?.orderId || 0) + 1);
-
-    // Calculate Total Amount
-    let totalAmount = 0;
-
-    for (const item of cartItems) {
-      const actualPrice = Number(item.productId.actualPrice) || 0;
-
-      const discount = Number(item.productId.discount) || 0;
-
-      const discountedPrice = actualPrice - (actualPrice * discount) / 100;
-
-      totalAmount += discountedPrice * item.quantity;
+    // The delivery address must belong to this user
+    const address = await Address.findOne({
+      _id: addressId,
+      userId,
+      status: { $in: ["active", "default"] },
+    });
+    if (!address) {
+      return res.status(400).json({
+        success: false,
+        msg: "Please select a valid delivery address",
+      });
     }
 
-    // Shipping Charge
-    const shipping = totalAmount > 5000 ? 0 : 99;
+    // Get Cart Items (skip items whose product was deleted)
+    const cartItems = (
+      await Cart.find({ userId }).populate("productId")
+    ).filter((item) => item.productId);
 
-    totalAmount += shipping;
+    if (!cartItems.length) {
+      return res.status(400).json({ success: false, msg: "Cart is empty" });
+    }
+
+    // Generate Order Number
+    const oid = generateOrderId();
+
+    // Calculate Total Amount (same helper as create-order, includes shipping)
+    const { total: totalAmount } = calculateTotal(cartItems);
 
     // Create Main Order
     const newOrder = new Order({
       userId,
       orderId: oid,
       totalAmount,
-      addressId,
+      addressId: address._id,
       paymentMethod: "online",
       paymentStatus: "completed",
       orderStatus: "pending",
@@ -123,8 +131,6 @@ router.post("/verify", async (req, res) => {
     await newOrder.save();
 
     // Create Order Items
-  
-
     for (const item of cartItems) {
       const orderItem = new OrderItem({
         orderId: newOrder._id,
@@ -143,8 +149,7 @@ router.post("/verify", async (req, res) => {
       msg: "Payment verified and order created successfully",
     });
   } catch (error) {
-    console.log(error);
-    console.log(error.stack);
+    console.error(error);
 
     res.status(500).json({
       success: false,

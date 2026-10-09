@@ -81,7 +81,7 @@ const Dashboard = () => {
   // Auth Guard
   useEffect(() => {
     if (!token || role !== 'Admin') {
-      navigate('/admin/login', { replace: true })
+      navigate('/admin', { replace: true })
     }
   }, [token, role, navigate])
 

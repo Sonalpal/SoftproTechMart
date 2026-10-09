@@ -243,14 +243,7 @@ const Users = () => {
                       >
                         {user.email}
                       </td>
-                      <td
-                        style={{
-                          color: "var(--text-secondary)",
-                          fontWeight: 500,
-                        }}
-                      >
-                        {user.mobile || "N/A"}
-                      </td>
+                     
                       <td
                         style={{
                           color: "var(--text-muted)",

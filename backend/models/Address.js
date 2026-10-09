@@ -22,9 +22,9 @@ const addressSchema =  mongoose.Schema({
         type:String,
         required:true,
     },
-    status: {
+        status: {
         type:String,
-        enum:['active','inactive','delete'],
+        enum:['active','inactive','delete','default'],
         default:'active'
     }
 },{

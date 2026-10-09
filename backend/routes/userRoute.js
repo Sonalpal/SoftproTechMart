@@ -3,11 +3,13 @@ const router = express.Router();
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const verifyToken = require("../middleware/verifyToken");
+const verifyAdmin = require("../middleware/verifyAdmin");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const EmailVerification = require("../models/EmailVerification");
 const rateLimit = require("express-rate-limit");
+
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
@@ -47,6 +49,17 @@ const validateEmail = (email) => {
   const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
   return emailRegex.test(email);
 };
+
+// Ownership helpers: the logged-in user (from the token) must be the same
+// person as the :id in the URL. Admins may also act on any user (except
+// change-password, which only the owner can do).
+const isOwner = (req) => req.user.id === req.params.id;
+const isOwnerOrAdmin = (req) => isOwner(req) || req.user.role === "admin";
+const forbidden = (res) =>
+  res.status(403).json({
+    success: false,
+    msg: "You are not allowed to access this account",
+  });
 
 
 
@@ -250,9 +263,9 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, email: user.email },
+      { id: user._id, email: user.email ,role:"user"},
       process.env.JWT_SECRET,
-      { expiresIn: "3d" },
+      { expiresIn: "1d" },
     );
 
     return res.status(200).json({
@@ -274,9 +287,11 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// get user details
+// get user details (the user themselves, or an admin)
 router.get("/:id", verifyToken, async (req, res) => {
   try {
+    if (!isOwnerOrAdmin(req)) return forbidden(res);
+
     const data = await User.findById(req.params.id).select("-password").lean();
 
     if (!data) {
@@ -301,9 +316,11 @@ router.get("/:id", verifyToken, async (req, res) => {
   }
 });
 
-// update user details
+// update user details (the user themselves, or an admin)
 router.patch("/:id", verifyToken, async (req, res) => {
   try {
+    if (!isOwnerOrAdmin(req)) return forbidden(res);
+
     const { name} = req.body;
 
     // Only allow updating specific fields
@@ -355,8 +372,8 @@ router.patch("/:id", verifyToken, async (req, res) => {
   }
 });
 
-// delete user
-router.delete("/:id", verifyToken, async (req, res) => {
+// delete user (Admin only)
+router.delete("/:id", verifyAdmin, async (req, res) => {
   try {
     const data = await User.findByIdAndDelete(req.params.id);
 
@@ -381,9 +398,11 @@ router.delete("/:id", verifyToken, async (req, res) => {
   }
 });
 
-// change password
+// change password (only the owner of the account)
 router.patch("/change-password/:id", verifyToken, async (req, res) => {
   try {
+    if (!isOwner(req)) return forbidden(res);
+
     const { oldPassword, newPassword, confirmPassword } = req.body;
 
     if (!oldPassword || !newPassword || !confirmPassword) {
@@ -425,7 +444,9 @@ router.patch("/change-password/:id", verifyToken, async (req, res) => {
       });
     }
 
-    user.password = newPassword;
+    // The model's pre-save hashing hook is commented out, so hash here.
+    // (Saving the plain password would make the user unable to log in again.)
+    user.password = await bcrypt.hash(newPassword, 10);
     await user.save();
 
     return res.status(200).json({
@@ -443,7 +464,7 @@ router.patch("/change-password/:id", verifyToken, async (req, res) => {
 });
 
 // get all users (Admin only)
-router.get("/", verifyToken, async (req, res) => {
+router.get("/", verifyAdmin, async (req, res) => {
   try {
     const data = await User.find({}).select("-password").lean();
 

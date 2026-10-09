@@ -35,21 +35,7 @@ const IconMail = () => (
   </svg>
 );
 
-const IconPhone = () => (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.75"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="5" y="2" width="14" height="20" rx="2" />
-    <circle cx="12" cy="17" r="1" />
-  </svg>
-);
+
 
 const IconEye = () => (
   <svg

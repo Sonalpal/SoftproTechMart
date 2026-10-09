@@ -1,7 +1,7 @@
 const express   = require('express')
 const router    = express.Router()
 const Complaint = require('../models/Complaint')
-
+const verifyAdmin = require("../middleware/verifyAdmin");
 // User complaint submit 
 router.post('/', async (req, res) => {
   try {
@@ -15,7 +15,7 @@ router.post('/', async (req, res) => {
 })
 
 // Admin — complaints list 
-router.get('/', async (req, res) => {
+router.get('/', verifyAdmin,async (req, res) => {
   try {
     const data = await Complaint.find().sort({ createdAt: -1 }).lean()
     res.json({ msg: 'Fetched', data })
@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 })
 
 // Admin — reply to complaint
-router.patch('/reply/:id', async (req, res) => {
+router.patch('/reply/:id',verifyAdmin, async (req, res) => {
   try {
     const data = await Complaint.findByIdAndUpdate(
       req.params.id,
@@ -39,7 +39,7 @@ router.patch('/reply/:id', async (req, res) => {
 })
 
 // Admin — delete complaint
-router.delete('/:id', async (req, res) => {
+router.delete('/:id',verifyAdmin, async (req, res) => {
   try {
     await Complaint.findByIdAndDelete(req.params.id)
     res.json({ msg: 'Deleted successfully' })

@@ -2,16 +2,33 @@ const express = require("express");
 const router = express.Router();
 const Order = require("../models/Order");
 const OrderItem = require("../models/OrderItem");
-const Product = require("../models/Product");
 const Cart = require("../models/Cart");
+const Address = require("../models/Address");
 const decrementStock = require("../utils/stockHelper");
+const calculateTotal = require("../utils/pricing");
+const generateOrderId = require("../utils/orderId");
+const verifyToken = require("../middleware/verifyToken");
+const verifyAdmin = require("../middleware/verifyAdmin");
 
-// Order place from cart
-router.post("/order/cart", async (req, res) => {
-  const { userId, paymentMethod, transactionId, addressId } = req.body;
+// The logged-in user (from the token) must be the same person as the :id in
+// the URL. Admins may also read any user's orders.
+const isOwnerOrAdmin = (req) =>
+  req.user.id === req.params.id || req.user.role === "admin";
+
+const forbidden = (res) =>
+  res.status(403).json({ msg: "You are not allowed to view these orders" });
+
+// Order place from cart (cash on delivery only).
+// Online orders are created in /api/payment/verify after Razorpay confirms payment.
+router.post("/order/cart", verifyToken, async (req, res) => {
+  // The user comes from the login token, never from the request body
+  const userId = req.user.id;
+  const { addressId } = req.body;
 
   try {
-    const cartItems = await Cart.find({ userId }).lean();
+    const cartItems = (
+      await Cart.find({ userId }).populate("productId")
+    ).filter((item) => item.productId);
 
     if (!cartItems.length) {
       return res.status(400).json({
@@ -19,33 +36,30 @@ router.post("/order/cart", async (req, res) => {
       });
     }
 
-    let totalAmount = 0;
-
-    for (const item of cartItems) {
-      const product = await Product.findById(item.productId);
-
-      if (!product) {
-        return res.status(404).json({
-          msg: "Product not found",
-        });
-      }
-
-      totalAmount += Number(product.actualPrice) * Number(item.quantity);
+    // The delivery address must belong to this user
+    const address = await Address.findOne({
+      _id: addressId,
+      userId,
+      status: { $in: ["active", "default"] },
+    });
+    if (!address) {
+      return res.status(400).json({
+        msg: "Please select a valid delivery address",
+      });
     }
 
-    const lastOrder = await Order.findOne().sort({ createdAt: -1 });
+    const { total: totalAmount } = calculateTotal(cartItems);
 
-    const oid = String(parseInt(lastOrder?.orderId || "0", 10) + 1);
+    const oid = generateOrderId();
 
     const newOrder = new Order({
       userId,
-      addressId,
+      addressId: address._id,
       orderId: oid,
       totalAmount,
-      paymentMethod,
-      paymentStatus: paymentMethod === "online" ? "completed" : "pending",
+      paymentMethod: "cod",
+      paymentStatus: "pending",
       orderStatus: "pending",
-      transactionId,
     });
 
     await newOrder.save();
@@ -53,21 +67,11 @@ router.post("/order/cart", async (req, res) => {
     for (const item of cartItems) {
       const orderItem = new OrderItem({
         orderId: newOrder._id,
-        productId: item.productId,
-        quantity: String(item.quantity),
-      });
-
-      await orderItem.save();
-    }
-
-    for (const item of cartItems) {
-      const orderItem = new OrderItem({
-        orderId: newOrder._id,
-        productId: item.productId,
+        productId: item.productId._id,
         quantity: String(item.quantity),
       });
       await orderItem.save();
-      await decrementStock(item.productId, item.quantity);
+      await decrementStock(item.productId._id, item.quantity);
     }
 
     await Cart.deleteMany({ userId });
@@ -85,8 +89,8 @@ router.post("/order/cart", async (req, res) => {
   }
 });
 
-// Total revenue from successfully delivered orders
-router.get("/revenue", async (req, res) => {
+// Total revenue from successfully delivered orders (Admin only)
+router.get("/revenue", verifyAdmin, async (req, res) => {
   try {
     const result = await Order.aggregate([
       { $match: { orderStatus: "delivered" } },
@@ -112,9 +116,11 @@ router.get("/revenue", async (req, res) => {
   }
 });
 
-// Order history for a user
-router.get("/order/history/:id", async (req, res) => {
+// Order history for a user (the user themselves, or an admin)
+router.get("/order/history/:id", verifyToken, async (req, res) => {
   try {
+    if (!isOwnerOrAdmin(req)) return forbidden(res);
+
     const orders = await Order.find({ userId: req.params.id })
       .sort({ createdAt: -1 })
       .lean();
@@ -125,7 +131,7 @@ router.get("/order/history/:id", async (req, res) => {
 });
 
 // All orders for admin
-router.get("/orders", async (req, res) => {
+router.get("/orders", verifyAdmin, async (req, res) => {
   try {
     const order = await Order.find().populate("userId").lean();
     res.json({ msg: "All orders fetched successfully", data: order });
@@ -134,13 +140,12 @@ router.get("/orders", async (req, res) => {
   }
 });
 
-// Update order status and payment status
-
-router.patch("/status/:id", async (req, res) => {
+// Update order status and payment status (Admin only)
+router.patch("/status/:id", verifyAdmin, async (req, res) => {
   try {
     const { orderStatus, paymentStatus } = req.body;
     const updateFields = { orderStatus };
-    if (paymentStatus) updateFields.paymentStatus = paymentStatus; // ← COD delivered pe
+    if (paymentStatus) updateFields.paymentStatus = paymentStatus; // COD: set to completed on delivery
     const data = await Order.findByIdAndUpdate(req.params.id, updateFields, {
       new: true,
     });
@@ -150,13 +155,16 @@ router.patch("/status/:id", async (req, res) => {
   }
 });
 
-//order search for a single user
-router.get("/user/:id", async (req, res) => {
+// Orders of a single user (the user themselves, or an admin)
+router.get("/user/:id", verifyToken, async (req, res) => {
   try {
+    if (!isOwnerOrAdmin(req)) return forbidden(res);
+
     const data = await Order.find({ userId: req.params.id }).lean();
     res.json({ msg: "Order history fetched successfully", data: data });
   } catch (err) {
     res.json({ msg: "Failed to fetch order history" });
   }
 });
+
 module.exports = router;

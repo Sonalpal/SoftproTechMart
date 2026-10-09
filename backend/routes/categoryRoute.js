@@ -2,6 +2,7 @@ const express = require('express')
 const Category = require('../models/Category')
 const router = express.Router()
 const multer = require('multer')
+const verifyAdmin = require("../middleware/verifyAdmin");
 
 const storage= multer.diskStorage({
     destination:(req,file,cb)=>{
@@ -13,7 +14,7 @@ const storage= multer.diskStorage({
 })
 const uploads = multer({storage:storage})
  
-router.post('/',uploads.single('picture'),async(req,res)=>{
+router.post('/',verifyAdmin,uploads.single('picture'),async(req,res)=>{
     const {category,description,picture} = req.body
    try{
     const {category , description , picture} = req.body
@@ -41,7 +42,7 @@ router.get('/',async(req,res)=>{
 })
 
 // put api 
-router.put('/:id', uploads.single('picture'), async(req,res)=>{
+router.put('/:id', verifyAdmin,uploads.single('picture'), async(req,res)=>{
    try{
     const updateFields = { ...req.body }
     if (req.file) {
@@ -57,7 +58,7 @@ router.put('/:id', uploads.single('picture'), async(req,res)=>{
 })
 
 // delete api
-router.delete('/:id', async(req,res)=>{
+router.delete('/:id',verifyAdmin, async(req,res)=>{
     try{
         const data = await Category.findByIdAndUpdate(req.params.id,{status:'delete'},{new:true})
         res.json({msg:"Category Delete successfully"})

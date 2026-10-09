@@ -4,6 +4,7 @@ const router = express.Router()
 const multer = require('multer')
 const path = require('path')    
 const fs = require('fs')
+const verifyAdmin = require("../middleware/verifyAdmin");
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, path.join(__dirname, '../uploads/product/'))
@@ -15,7 +16,7 @@ const storage = multer.diskStorage({
 const uploads = multer({ storage: storage })
 
 //post api
-router.post('/', uploads.single('picture'), async (req, res) => {
+router.post('/',verifyAdmin, uploads.single('picture'), async (req, res) => {
     try {
         const { name, category, description, brandName, actualPrice, discount, images, tag, stock, attributes, height, width,
             stockStatus, refundPolicy, replacementPolicy, freeDelivery, returnPolicy, isCod } = req.body
@@ -67,7 +68,7 @@ router.get('/', async (req, res) => {
 })
 
 //put api
-router.put('/:id', uploads.single("picture"), async (req, res) => {
+router.put('/:id', verifyAdmin,uploads.single("picture"), async (req, res) => {
     try {
         const { name, category, description, brandName, actualPrice, discount, tag, stock, attributes, height, width,
             stockStatus, refundPolicy, replacementPolicy, freeDelivery, returnPolicy, isCod } = req.body
@@ -90,7 +91,7 @@ router.put('/:id', uploads.single("picture"), async (req, res) => {
 })
 
 //delete api
-router.delete('/:id', async (req, res) => {
+router.delete('/:id',verifyAdmin, async (req, res) => {
     try {
         const p = await Product.findByIdAndDelete(req.params.id)
         if (p) {
@@ -134,7 +135,7 @@ router.get('/category/:id', async (req, res) => {
 })
 
 // Quick stock update endpoint
-router.patch('/:id/stock', async (req, res) => {
+router.patch('/:id/stock',verifyAdmin, async (req, res) => {
     try {
         const { stock, stockStatus } = req.body;
         const product = await Product.findByIdAndUpdate(

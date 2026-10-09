@@ -5,7 +5,7 @@ const Profile = () => {
   const userId = localStorage.getItem("id");
 
   const [user, setUser] = useState(null);
-  const [form, setForm] = useState({ name: "", email: "", mobile: "" });
+  const [form, setForm] = useState({ name: "", email: ""});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [alert, setAlert] = useState(null);
