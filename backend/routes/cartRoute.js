@@ -3,15 +3,15 @@ const router = express.Router();
 const Cart = require("../models/Cart");
 const verifyToken = require("../middleware/verifyToken");
 
-   router.get("/:id", verifyToken, async (req, res) => {
-     try {
-       const data = await Cart.find({ userId: req.user.id }).populate("productId");
-       res.json({ msg: "Cart fetched", data });
-     } catch (err) {
-       console.error(err);
-       res.status(500).json({ msg: "Failed to fetch cart items" });
-     }
-   });
+router.get("/:id", verifyToken, async (req, res) => {
+  try {
+    const data = await Cart.find({ userId: req.user.id }).populate("productId");
+    res.json({ msg: "Cart fetched", data });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Failed to fetch cart items" });
+  }
+});
 // Add to cart
 router.post("/", async (req, res) => {
   const { userId, productId } = req.body;
@@ -27,12 +27,12 @@ router.post("/", async (req, res) => {
 // Get cart items for a user
 router.get("/:id", async (req, res) => {
   try {
-    console.log("Received userId:", userId);
+    ("Received userId:", userId);
 
     const cartItems = await Cart.find({ userId });
 
-    console.log("Matched cart items:", cartItems.length);
-    console.log("Cart data:", cartItems);
+    ("Matched cart items:", cartItems.length);
+    ("Cart data:", cartItems);
 
     if (cartItems.length === 0) {
       return res.status(400).json({ msg: "Cart is empty" });

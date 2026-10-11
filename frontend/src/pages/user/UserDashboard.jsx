@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Navbar from '../../components/Navbar'
-import axios from 'axios'
+
 /* ── Icons ── */
 const IcoDashboard = () => (
   <svg className="dash-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">

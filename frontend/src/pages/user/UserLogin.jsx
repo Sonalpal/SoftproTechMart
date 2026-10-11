@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+
 import logo from "../../assets/images/spi.png";
 import Footer from "../../components/Footer";
 import Navbar from "../../components/Navbar";
+import api, { API_URL } from "../../api";
 const IconMail = () => (
   <svg
     width="16"
@@ -86,13 +87,10 @@ const Login = () => {
     setLoading(true);
     setError("");
     try {
-      console.log("in frontend before call");
+      ("in frontend before call");
 
-      const res = await axios.post(
-        "http://localhost:5000/api/user/login",
-        formData,
-      );
-      console.log(" In frontend after call");
+      const res = await api.post("/user/login", formData);
+      (" In frontend after call");
 
       if (res.data.msg === "User Login Successfully") {
         localStorage.setItem("token", res.data.token);

@@ -22,7 +22,7 @@ src/
 ## Dependencies
 
 ```bash
-npm install react-router-dom axios bootstrap
+npm install react-router-dom api.bootstrap
 ```
 
 ## Setup
@@ -30,14 +30,15 @@ npm install react-router-dom axios bootstrap
 1. Copy all files into your `src/` folder maintaining the structure above.
 
 2. In your `main.jsx` (or `index.jsx`), import Bootstrap CSS **before** your app:
-   ```jsx
-   import 'bootstrap/dist/css/bootstrap.min.css'
-   import 'bootstrap/dist/js/bootstrap.bundle.min.js'
-   import React from 'react'
-   import ReactDOM from 'react-dom/client'
-   import App from './App'
 
-   ReactDOM.createRoot(document.getElementById('root')).render(<App />)
+   ```jsx
+   import "bootstrap/dist/css/bootstrap.min.css";
+   import "bootstrap/dist/js/bootstrap.bundle.min.js";
+   import React from "react";
+   import ReactDOM from "react-dom/client";
+   import App from "./App";
+
+   ReactDOM.createRoot(document.getElementById("root")).render(<App />);
    ```
 
 3. Run:
@@ -52,7 +53,7 @@ npm install react-router-dom axios bootstrap
 - **Animated hero slider** — Bootstrap Carousel with custom CSS captions and Ken Burns effect.
 - **Scroll-triggered animations** — IntersectionObserver drives `.fade-up` entrance animations.
 - **Product filter + search + sort** — client-side, no backend needed.
-- **Auth pages** — Login and Register connect to `http://localhost:5000/api/user/` (your existing backend).
+- **Auth pages** — Login and Register connect to `${API_URL}/user/` (your existing backend).
 
 ## Theme Customisation
 

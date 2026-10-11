@@ -3,6 +3,7 @@ const Admin = require("../models/Admin");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const { adminLoginLimiter } = require("../middleware/loginLimiter");
 
 router.post("/register", async (req, res) => {
   try {
@@ -46,7 +47,7 @@ router.post("/register", async (req, res) => {
 
 // admin auth routes
 
-router.post("/login", async (req, res) => {
+router.post("/login",adminLoginLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 

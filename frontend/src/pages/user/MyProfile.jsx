@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api, { API_URL } from '../../api';
+
 
 const Profile = () => {
   const userId = localStorage.getItem("id");
 
   const [user, setUser] = useState(null);
-  const [form, setForm] = useState({ name: "", email: ""});
+  const [form, setForm] = useState({ name: "", email: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [alert, setAlert] = useState(null);
@@ -15,20 +16,16 @@ const Profile = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await axios.get(
-          `http://localhost:5000/api/user/${userId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
+        const res = await api.get(`${API_URL}/user/${userId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        );
+        });
         const data = res.data.data;
         setUser(data);
         setForm({
           name: data.name || "",
           email: data.email || "",
-         
         });
       } catch (err) {
         console.error(err);
@@ -52,16 +49,14 @@ const Profile = () => {
       return setAlert({ type: "error", msg: "Name is required." });
     if (!form.email.trim())
       return setAlert({ type: "error", msg: "Email is required." });
-   
 
     setSaving(true);
     try {
-      const res = await axios.patch(
-        `http://localhost:5000/api/user/${userId}`,
+      const res = await api.patch(
+        `${API_URL}/user/${userId}`,
         {
           name: form.name,
           email: form.email,
-        
         },
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -185,49 +180,48 @@ const Profile = () => {
 
               {/* Info rows */}
               <div style={{ marginTop: "1.5rem", textAlign: "left" }}>
-                {[
-                  { icon: "📧", label: "Email", val: form.email },
-                 
-                ].map((row) => (
-                  <div
-                    key={row.label}
-                    style={{
-                      display: "flex",
-                      gap: "0.75rem",
-                      alignItems: "flex-start",
-                      padding: "0.6rem 0",
-                      borderBottom: "1px solid var(--dash-card-border)",
-                    }}
-                  >
-                    <span style={{ fontSize: "1rem", flexShrink: 0 }}>
-                      {row.icon}
-                    </span>
-                    <div>
-                      <div
-                        style={{
-                          fontSize: "0.68rem",
-                          fontWeight: 600,
-                          color: "var(--text-muted)",
-                          textTransform: "uppercase",
-                          letterSpacing: ".07em",
-                        }}
-                      >
-                        {row.label}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "0.85rem",
-                          color: "var(--text-primary)",
-                          fontWeight: 500,
-                          marginTop: 2,
-                          wordBreak: "break-all",
-                        }}
-                      >
-                        {row.val || "—"}
+                {[{ icon: "📧", label: "Email", val: form.email }].map(
+                  (row) => (
+                    <div
+                      key={row.label}
+                      style={{
+                        display: "flex",
+                        gap: "0.75rem",
+                        alignItems: "flex-start",
+                        padding: "0.6rem 0",
+                        borderBottom: "1px solid var(--dash-card-border)",
+                      }}
+                    >
+                      <span style={{ fontSize: "1rem", flexShrink: 0 }}>
+                        {row.icon}
+                      </span>
+                      <div>
+                        <div
+                          style={{
+                            fontSize: "0.68rem",
+                            fontWeight: 600,
+                            color: "var(--text-muted)",
+                            textTransform: "uppercase",
+                            letterSpacing: ".07em",
+                          }}
+                        >
+                          {row.label}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "0.85rem",
+                            color: "var(--text-primary)",
+                            fontWeight: 500,
+                            marginTop: 2,
+                            wordBreak: "break-all",
+                          }}
+                        >
+                          {row.val || "—"}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
             </div>
           </div>
@@ -280,8 +274,6 @@ const Profile = () => {
                   />
                 </div>
 
-              
-
                 <div
                   style={{
                     display: "flex",
@@ -305,7 +297,6 @@ const Profile = () => {
                         setForm({
                           name: user.name || "",
                           email: user.email || "",
-                       
                         });
                         setEdited(false);
                         setAlert(null);

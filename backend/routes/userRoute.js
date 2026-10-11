@@ -9,7 +9,7 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const EmailVerification = require("../models/EmailVerification");
 const rateLimit = require("express-rate-limit");
-
+const { userLoginLimiter } = require("../middleware/loginLimiter");
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
@@ -18,14 +18,20 @@ const sendOtpLimiter = rateLimit({
   limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, msg: "Too many code requests. Please try again in 15 minutes." },
+  message: {
+    success: false,
+    msg: "Too many code requests. Please try again in 15 minutes.",
+  },
 });
 const verifyOtpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, msg: "Too many verification attempts. Please try again in 15 minutes." },
+  message: {
+    success: false,
+    msg: "Too many verification attempts. Please try again in 15 minutes.",
+  },
 });
 const normalizeEmail = (email) => email.toLowerCase().trim();
 const otpDigest = (email, otp) =>
@@ -61,24 +67,36 @@ const forbidden = (res) =>
     msg: "You are not allowed to access this account",
   });
 
-
-
 // Send a short-lived verification code before registration.
 router.post("/send-otp", sendOtpLimiter, async (req, res) => {
   try {
-    const email = typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
+    const email =
+      typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
     if (!validateEmail(email)) {
-      return res.status(400).json({ success: false, msg: "Please provide a valid email" });
+      return res
+        .status(400)
+        .json({ success: false, msg: "Please provide a valid email" });
     }
     if (await User.exists({ email })) {
-      return res.status(409).json({ success: false, msg: "An account with this email already exists" });
+      return res
+        .status(409)
+        .json({
+          success: false,
+          msg: "An account with this email already exists",
+        });
     }
 
     const otp = crypto.randomInt(0, 1_000_000).toString().padStart(6, "0");
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
     await EmailVerification.findOneAndUpdate(
       { email },
-      { email, otpHash: otpDigest(email, otp), attempts: 0, expiresAt, verifiedAt: null },
+      {
+        email,
+        otpHash: otpDigest(email, otp),
+        attempts: 0,
+        expiresAt,
+        verifiedAt: null,
+      },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     );
 
@@ -95,59 +113,105 @@ router.post("/send-otp", sendOtpLimiter, async (req, res) => {
       throw mailError;
     }
 
-    return res.status(200).json({ success: true, msg: "Verification code sent. Check your email." });
+    return res
+      .status(200)
+      .json({
+        success: true,
+        msg: "Verification code sent. Check your email.",
+      });
   } catch (error) {
     console.error("Send verification email error:", error.message);
-    return res.status(500).json({ success: false, msg: "Could not send the verification email. Check the server email settings and try again." });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        msg: "Could not send the verification email. Check the server email settings and try again.",
+      });
   }
 });
 
 // Verify code, allowing at most five guesses for each issued code.
 router.post("/verify-otp", verifyOtpLimiter, async (req, res) => {
   try {
-    const email = typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
+    const email =
+      typeof req.body.email === "string" ? normalizeEmail(req.body.email) : "";
     const otp = typeof req.body.otp === "string" ? req.body.otp.trim() : "";
     if (!validateEmail(email) || !/^\d{6}$/.test(otp)) {
-      return res.status(400).json({ success: false, msg: "Enter a valid email and 6-digit code" });
+      return res
+        .status(400)
+        .json({ success: false, msg: "Enter a valid email and 6-digit code" });
     }
 
-    const record = await EmailVerification.findOne({ email, expiresAt: { $gt: new Date() } });
+    const record = await EmailVerification.findOne({
+      email,
+      expiresAt: { $gt: new Date() },
+    });
     if (!record) {
-      return res.status(400).json({ success: false, msg: "The code has expired or was not requested. Send a new code." });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          msg: "The code has expired or was not requested. Send a new code.",
+        });
     }
     if (record.verifiedAt) {
-      return res.status(200).json({ success: true, msg: "Email verified. You can create your account." });
+      return res
+        .status(200)
+        .json({
+          success: true,
+          msg: "Email verified. You can create your account.",
+        });
     }
     if (record.attempts >= OTP_MAX_ATTEMPTS) {
       await EmailVerification.deleteOne({ _id: record._id });
-      return res.status(429).json({ success: false, msg: "Too many incorrect attempts. Request a new code." });
+      return res
+        .status(429)
+        .json({
+          success: false,
+          msg: "Too many incorrect attempts. Request a new code.",
+        });
     }
 
     const submittedHash = Buffer.from(otpDigest(email, otp), "hex");
     const savedHash = Buffer.from(record.otpHash, "hex");
-    if (submittedHash.length !== savedHash.length || !crypto.timingSafeEqual(submittedHash, savedHash)) {
+    if (
+      submittedHash.length !== savedHash.length ||
+      !crypto.timingSafeEqual(submittedHash, savedHash)
+    ) {
       record.attempts += 1;
       if (record.attempts >= OTP_MAX_ATTEMPTS) await record.deleteOne();
       else await record.save();
-      return res.status(400).json({ success: false, msg: "Incorrect verification code" });
+      return res
+        .status(400)
+        .json({ success: false, msg: "Incorrect verification code" });
     }
 
     record.verifiedAt = new Date();
     await record.save();
-    return res.status(200).json({ success: true, msg: "Email verified. You can create your account." });
+    return res
+      .status(200)
+      .json({
+        success: true,
+        msg: "Email verified. You can create your account.",
+      });
   } catch (error) {
     console.error("Verify email code error:", error.message);
-    return res.status(500).json({ success: false, msg: "Could not verify the code. Please try again." });
+    return res
+      .status(500)
+      .json({
+        success: false,
+        msg: "Could not verify the code. Please try again.",
+      });
   }
 });
 
 // user registration
 router.post("/register", async (req, res) => {
   try {
-    const { name, email,  password } = req.body;
+    const { name, email, password } = req.body;
 
     // Input validation
-    if (!name || !email ||  !password) {
+    if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
         msg: "Please provide all required fields",
@@ -161,8 +225,6 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    
-
     if (password.length < 8) {
       return res.status(400).json({
         success: false,
@@ -171,7 +233,7 @@ router.post("/register", async (req, res) => {
     }
 
     const normalizedEmail = normalizeEmail(email);
-    
+
     const isExist = await User.findOne({
       $or: [{ email: normalizedEmail }],
     });
@@ -189,7 +251,12 @@ router.post("/register", async (req, res) => {
       expiresAt: { $gt: new Date() },
     });
     if (!verifiedEmail) {
-      return res.status(403).json({ success: false, msg: "Verify your email before creating an account" });
+      return res
+        .status(403)
+        .json({
+          success: false,
+          msg: "Verify your email before creating an account",
+        });
     }
 
     const hash = await bcrypt.hash(password, 10);
@@ -197,7 +264,7 @@ router.post("/register", async (req, res) => {
     const user = new User({
       name: name.trim(),
       email: normalizedEmail,
-   
+
       password: hash,
     });
 
@@ -219,9 +286,9 @@ router.post("/register", async (req, res) => {
 });
 
 // user login
-router.post("/login", async (req, res) => {
+router.post("/login", userLoginLimiter, async (req, res) => {
   try {
-    console.log("entered user login");
+    ("entered user login");
 
     const { email, password } = req.body;
 
@@ -239,12 +306,12 @@ router.post("/login", async (req, res) => {
         msg: "Please provide a valid email",
       });
     }
-    console.log("before call");
+    ("before call");
 
     const user = await User.findOne({
       email: email.toLowerCase().trim(),
     }).select("+password");
-    console.log("after call");
+    ("after call");
 
     if (!user) {
       return res.status(401).json({
@@ -263,7 +330,7 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, email: user.email ,role:"user"},
+      { id: user._id, email: user.email, role: "user" },
       process.env.JWT_SECRET,
       { expiresIn: "1d" },
     );
@@ -321,7 +388,7 @@ router.patch("/:id", verifyToken, async (req, res) => {
   try {
     if (!isOwnerOrAdmin(req)) return forbidden(res);
 
-    const { name} = req.body;
+    const { name } = req.body;
 
     // Only allow updating specific fields
     const allowedFields = { name };
@@ -342,8 +409,6 @@ router.patch("/:id", verifyToken, async (req, res) => {
         msg: "Name must be at least 3 characters long",
       });
     }
-
-   
 
     const data = await User.findByIdAndUpdate(req.params.id, allowedFields, {
       new: true,

@@ -1,6 +1,7 @@
-import axios from "axios";
+
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import api, { API_URL } from '../../api';
 
 const Product = () => {
   const [data, setData] = useState([]);
@@ -10,7 +11,7 @@ const Product = () => {
   const handlefeatch = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:5000/api/product");
+      const res = await api.get("/product");
       setData(res.data.data || []);
     } catch (er) {
       console.error(er);
@@ -27,7 +28,7 @@ const Product = () => {
     if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
     setDeletingId(id);
     try {
-      const res = await axios.delete(`http://localhost:5000/api/product/${id}`);
+      const res = await api.delete(`${API_URL}/product/${id}`);
       alert(res.data.msg);
       setData((prev) => prev.filter((p) => p._id !== id));
     } catch {
@@ -41,7 +42,7 @@ const Product = () => {
     if (!img) return null;
     if (img.startsWith("http")) return img;
     const filename = img.replace(/\\/g, "/").split("/").pop();
-    return `http://localhost:5000/api/product/${filename}`;
+    return `${API_URL}/product/${filename}`;
   };
 
   if (loading) {

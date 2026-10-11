@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import api, { API_URL } from "../api";
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -19,9 +20,7 @@ const ProductDetails = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await axios.get(
-          `http://localhost:5000/api/product/details/${id}`,
-        );
+        const res = await api.get(`${API_URL}/product/details/${id}`);
         setData(res.data.data);
       } catch (err) {
         console.error(err);
@@ -37,7 +36,7 @@ const ProductDetails = () => {
     if (!img) return null;
     if (img.startsWith("http")) return img;
     const filename = img.replace(/\\/g, "/").split("/").pop();
-    return `http://localhost:5000/api/product/${filename}`;
+    return `${API_URL}/product/${filename}`;
   };
 
   /* ── Discounted price ── */
@@ -49,7 +48,7 @@ const ProductDetails = () => {
 
   /* ── Add to Cart ── */
   const handleCart = async () => {
-    console.log(userId);
+    userId;
     if (!userId) {
       navigate("/login");
       return;
@@ -57,7 +56,7 @@ const ProductDetails = () => {
     setAdding(true);
     setCartMsg("");
     try {
-      const res = await axios.post("http://localhost:5000/api/cart", {
+      const res = await api.post("/cart", {
         userId,
         productId: id,
       });
@@ -70,25 +69,27 @@ const ProductDetails = () => {
   };
 
   /* ── Buy Now (skip cart, go straight to checkout) ── */
-    const handleBuyNow = async () => {
+  const handleBuyNow = async () => {
     if (!userId) {
-      navigate('/login')
-      return
+      navigate("/login");
+      return;
     }
-    setAdding(true)
+    setAdding(true);
     try {
-      await axios.post('http://localhost:5000/api/cart', {
+      await api.post("${API_URL}/cart", {
         userId,
         productId: id,
-      })
-      const items = [{ productId: data, quantity: 1 }]
-      navigate('/user/dashboard/address', { state: { total: getDiscounted(), items } })
+      });
+      const items = [{ productId: data, quantity: 1 }];
+      navigate("/user/dashboard/address", {
+        state: { total: getDiscounted(), items },
+      });
     } catch (err) {
-      setCartMsg('Something went wrong. Try again.')
+      setCartMsg("Something went wrong. Try again.");
     } finally {
-      setAdding(false)
+      setAdding(false);
     }
-  }
+  };
 
   if (loading)
     return (

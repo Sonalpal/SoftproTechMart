@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import api, { API_URL } from '../../api';
+
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -10,7 +11,7 @@ const Users = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:5000/api/user", {
+      const res = await api.get("/user", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
       setUsers(res.data.data || []);
@@ -35,7 +36,7 @@ const Users = () => {
     }
     setDeletingId(id);
     try {
-      const res = await axios.delete(`http://localhost:5000/api/user/${id}`);
+      const res = await api.delete(`${API_URL}/user/${id}`);
       alert(res.data.msg || "User deleted successfully.");
       setUsers((prev) => prev.filter((u) => u._id !== id));
     } catch (err) {
@@ -53,8 +54,7 @@ const Users = () => {
         .includes(search.toLowerCase()) ||
       String(u.email || "")
         .toLowerCase()
-        .includes(search.toLowerCase())
-      
+        .includes(search.toLowerCase()),
   );
 
   if (loading) {
@@ -165,7 +165,7 @@ const Users = () => {
                   <th>S.N.</th>
                   <th>Customer</th>
                   <th>Email</th>
-                 
+
                   <th>Registration Date</th>
                   <th>Actions</th>
                 </tr>
@@ -243,7 +243,7 @@ const Users = () => {
                       >
                         {user.email}
                       </td>
-                     
+
                       <td
                         style={{
                           color: "var(--text-muted)",

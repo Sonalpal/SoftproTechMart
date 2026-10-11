@@ -88,11 +88,13 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`Server started successfully on port ${PORT}`);
+ console.log( 
+  `Server started successfully on port ${PORT}`);
+ ;
 });
 
 // Graceful shutdown
 process.on("SIGINT", () => {
-  console.log("Server is shutting down gracefully");
+  ("Server is shutting down gracefully");
   process.exit(0);
 });

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import api, { API_URL } from '../../api';
+
 
 const AdminOverview = () => {
   const [stats, setStats] = useState({
@@ -18,16 +19,16 @@ const AdminOverview = () => {
       try {
         const [prodRes, catRes, orderRes, userRes, compRes, revRes] =
           await Promise.all([
-            axios.get("http://localhost:5000/api/product"),
-            axios.get("http://localhost:5000/api/category"),
-            axios.get("http://localhost:5000/api/order/orders"),
-            axios.get("http://localhost:5000/api/user", {
+            api.get("/product"),
+            api.get("/category"),
+            api.get("/order/orders"),
+            api.get("/user", {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("token")}`,
               },
             }),
-            axios.get("http://localhost:5000/api/complaint"),
-            axios.get("http://localhost:5000/api/order/revenue"),
+            api.get("/complaint"),
+            api.get("/order/revenue"),
           ]);
 
         setStats({

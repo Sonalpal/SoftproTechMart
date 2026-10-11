@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import axios from "axios";
+import api, { API_URL } from "../../api";
 
 const Address = () => {
   const userId = localStorage.getItem("id");
@@ -39,9 +39,7 @@ const Address = () => {
   /* ── Fetch addresses ── */
   const fetchAddresses = async () => {
     try {
-      const res = await axios.get(
-        `http://localhost:5000/api/address/${userId}`,
-      );
+      const res = await api.get(`${API_URL}/address/${userId}`);
       const data = res.data.data || [];
       setAddresses(data);
       if (data.length > 0) setSelected(data[0]._id);
@@ -66,7 +64,7 @@ const Address = () => {
     setSaving(true);
     setAlert(null);
     try {
-      await axios.post("http://localhost:5000/api/address", {
+      await api.post("/address", {
         userId,
         houseNo: form.houseNo,
         pincode: form.pincode,
@@ -91,7 +89,7 @@ const Address = () => {
   const handleDelete = async (addrId) => {
     setDeleting(addrId);
     try {
-      await axios.delete(`http://localhost:5000/api/address/${addrId}`);
+      await api.delete(`${API_URL}/address/${addrId}`);
       const updated = addresses.filter((a) => a._id !== addrId);
       setAddresses(updated);
       if (selected === addrId) setSelected(updated[0]?._id || null);
@@ -120,12 +118,9 @@ const Address = () => {
         return;
       }
 
-      const orderResponse = await axios.post(
-        "http://localhost:5000/api/payment/create-order",
-        {
-          userId,
-        },
-      );
+      const orderResponse = await api.post("/payment/create-order", {
+        userId,
+      });
 
       const order = orderResponse.data.order;
 
@@ -143,16 +138,13 @@ const Address = () => {
         description: "Order Payment",
 
         handler: async function (response) {
-          const verify = await axios.post(
-            "http://localhost:5000/api/payment/verify",
-            {
-              ...response,
-              userId,
-              addressId: selected,
-              amount: order.amount,
-            },
-          );
-          console.log(verify);
+          const verify = await api.post("/payment/verify", {
+            ...response,
+            userId,
+            addressId: selected,
+            amount: order.amount,
+          });
+          verify;
 
           if (verify.data.success) {
             setAlert({
@@ -173,7 +165,7 @@ const Address = () => {
 
       razorpay.open();
     } catch (error) {
-      console.log(error);
+      error;
 
       alert("Payment Failed");
     }
@@ -207,23 +199,21 @@ const Address = () => {
     setAlert(null);
 
     try {
-      console.log("Order payload:", {
-        userId,
-        paymentMethod,
-        transactionId: null,
-        addressId: selected,
-        totalAmount: orderTotal,
-      });
-      const res = await axios.post(
-        "http://localhost:5000/api/order/order/cart",
+      ("Order payload:",
         {
           userId,
           paymentMethod,
           transactionId: null,
           addressId: selected,
           totalAmount: orderTotal,
-        },
-      );
+        });
+      const res = await api.post("/order/order/cart", {
+        userId,
+        paymentMethod,
+        transactionId: null,
+        addressId: selected,
+        totalAmount: orderTotal,
+      });
 
       setAlert({
         type: "success",
@@ -231,8 +221,8 @@ const Address = () => {
       });
       navigate("/user/dashboard/orders");
     } catch (error) {
-      console.log("Status:", error.response?.status);
-      console.log("Backend error:", error.response?.data);
+      ("Status:", error.response?.status);
+      ("Backend error:", error.response?.data);
 
       setAlert({
         type: "error",

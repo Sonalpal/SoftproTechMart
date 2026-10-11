@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+
 import logo from "../../assets/images/spi.png";
+import api, { API_URL } from '../../api';
 
 const IconUser = () => (
   <svg
@@ -34,8 +35,6 @@ const IconMail = () => (
     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
   </svg>
 );
-
-
 
 const IconEye = () => (
   <svg
@@ -108,12 +107,9 @@ const Register = () => {
     }
     setOtpLoading(true);
     try {
-      const { data } = await axios.post(
-        "http://localhost:5000/api/user/send-otp",
-        {
-          email: formData.email,
-        },
-      );
+      const { data } = await api.post("/user/send-otp", {
+        email: formData.email,
+      });
       setOtpSent(true);
       setOtpVerified(false);
       setOtp("");
@@ -136,13 +132,10 @@ const Register = () => {
     }
     setOtpLoading(true);
     try {
-      const { data } = await axios.post(
-        "http://localhost:5000/api/user/verify-otp",
-        {
-          email: formData.email,
-          otp,
-        },
-      );
+      const { data } = await api.post("/user/verify-otp", {
+        email: formData.email,
+        otp,
+      });
       setOtpVerified(true);
       setNotice(data.msg || "Email verified.");
     } catch (err) {
@@ -166,7 +159,7 @@ const Register = () => {
       return;
     }
     try {
-      await axios.post("http://localhost:5000/api/user/register", formData);
+      await api.post("/user/register", formData);
       alert("Account created successfully! Please sign in.");
       navigate("/login");
     } catch (err) {
@@ -223,22 +216,22 @@ const Register = () => {
 
           <form onSubmit={handleSubmit} noValidate>
             {/* <div className="form-row-2"> */}
-              <div className="form-field">
-                <label htmlFor="name">Full Name</label>
-                <input
-                  id="name"
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Arjun Sharma"
-                  required
-                  autoComplete="name"
-                />
-                <span className="field-icon">
-                  <IconUser />
-                </span>
-              </div>
+            <div className="form-field">
+              <label htmlFor="name">Full Name</label>
+              <input
+                id="name"
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Arjun Sharma"
+                required
+                autoComplete="name"
+              />
+              <span className="field-icon">
+                <IconUser />
+              </span>
+            </div>
             {/* </div> */}
 
             <div className="form-field">

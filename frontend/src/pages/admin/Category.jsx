@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+
 
 const Category = () => {
   const [data, setData] = useState([]);
@@ -10,7 +10,7 @@ const Category = () => {
   const handlefeatch = async () => {
     setLoading(true);
     try {
-      const res = await axios.get("http://localhost:5000/api/category");
+      const res = await api.get("/category");
       setData(res.data.data || []);
     } catch (er) {
       console.error(er);
@@ -28,9 +28,7 @@ const Category = () => {
       return;
     setDeletingId(id);
     try {
-      const res = await axios.delete(
-        `http://localhost:5000/api/category/${id}`,
-      );
+      const res = await api.delete(`${API_URL}/category/${id}`);
       alert(res.data.msg);
       setData((prev) => prev.filter((c) => c._id !== id));
     } catch {
@@ -44,7 +42,7 @@ const Category = () => {
     if (!picture) return null;
     if (picture.startsWith("http")) return picture;
     const filename = picture.replace(/\\/g, "/").split("/").pop();
-    return `http://localhost:5000/api/category/${filename}`;
+    return `${API_URL}/category/${filename}`;
   };
 
   if (loading) {
